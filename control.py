@@ -31,7 +31,7 @@ class Control (sp.Module):
     def __init__ (self):
         sp.Module.__init__ (self)
         
-        self.page ('movement control')
+        self.page ('movement control')          # is page1: on window1 @mje
         
         self.group ('torso drive control', True)
         self.torVoltFac = sp.Register (0.8)
@@ -43,18 +43,14 @@ class Control (sp.Module):
         self.group ('torso angle')
         self.torAngSet = sp.Register ()
         self.torAng = sp.Register ()
-        # self.torAngOld = sp.Register ()
         self.torAngDif = sp.Register ()
-        self.torMarg = sp.Register (0.5)        # 15° target tolerance for prop.speed  @mje
+        self.torAngMid = sp.Register ()         # bang-bang settings @mje
+        self.torAngMar = sp.Register ()         # target tolerance with direction
+        self.torMarg = sp.Register (0.5)        # target tolerance
         self.torRound = sp.Marker ()            # is on target
-        # self.torSpeedFac = sp.Register (0.5)  # original prop. speed settings
-        # self.torSpeedMax = sp.Register (20)
-        # self.torSpeedSet = sp.Register()
-        # self.torSpeed = sp.Register ()
-        # self.torSpeedDif = sp.Register ()
-        self.torAngChg = sp.Oneshot ()          # bang-bang settings @mje
+        self.goPulse = sp.Oneshot ()            # movement restarted
+        self.torAngChg = sp.Oneshot ()          # target has changed
         self.torAngSetOld = sp.Register ()
-        self.torAngMid = sp.Register ()
         
         self.group ('upper arm drive control', True)
         self.uppVoltFac = sp.Register (0.25)
@@ -112,7 +108,7 @@ class Control (sp.Module):
         self.wriSpeedSet = sp.Register ()
         self.wriSpeed = sp.Register ()
         self.wriSpeedDif = sp.Register ()
-        
+
         self.group ('hand and fingers setpoints', True)
         self.hanAngSet = sp.Register ()
         self.hanEnab = sp.Marker ()
@@ -143,25 +139,16 @@ class Control (sp.Module):
         self.part ('torso')
         self.torAngDif.set (self.torAngSet - self.torAng)
         self.torRound.mark (sp.abs (self.torAngDif) < self.torMarg)
- 
-        # bang-bang reference
-        self.torAngChg.trigger (self.torAngSet != self.torAngSetOld)
-        self.torAngMid.set (((self.torAngSet + self.torAng) / 2) - self.torMarg, self.torAngChg)
-        self.torAngMid.set (-self.torAngMid, (self.torAng < self.torAngSet) and self.torAngChg)
-        
+        # bang-bang
+        self.goPulse.trigger (self.go)
+        self.torAngChg.trigger ((self.torAngSet != self.torAngSetOld) or self.goPulse)
+        self.torAngMar.set (self.torMarg, self.torAng < self.torAngSet, -self.torMarg)
+        self.torAngMid.set ((self.torAngSet + self.torAng) / 2 + self.torAngMar, self.torAngChg)
         self.torVoltSet.set (-self.torVoltMax, self.torAngMid < self.torAng, self.torVoltMax)
         self.torVolt.set (self.torVoltSet, not self.torRound, 0)  # Torq. ref. robot
         self.torEnab.mark (self.go and not self.torRound)         # Brake robot
         self.torAngSetOld.set (self.torAngSet)
-        
-        # Proportional speed correction of pos. deviation  +- AngDif: disabled @mje
-        # self.torSpeedSet.set (sp.limit (self.torSpeedFac * self.torAngDif, self.torSpeedMax))
-        # self.torSpeed.set ((self.torAng - self.torAngOld) / sp.world.period)
-        # self.torSpeedDif.set (self.torSpeedSet - self.torSpeed)
-        # self.torVolt.set (sp.limit (self.torVoltFac * self.torSpeedDif, self.torVoltMax))
-        # self.torEnab.mark (self.go)
-        # self.torAngOld.set (self.torAng)
-        
+                
         self.part ('upper arm')
         self.uppAngDif.set (self.uppAngSet - self.uppAng)
         self.uppRound.mark (sp.abs (self.uppAngDif) < self.uppMarg)
@@ -169,7 +156,8 @@ class Control (sp.Module):
         self.uppSpeed.set ((self.uppAng - self.uppAngOld) / sp.world.period)
         self.uppSpeedDif.set (self.uppSpeedSet - self.uppSpeed)
         self.uppVolt.set (sp.limit (self.uppVoltFac * self.uppSpeedDif, self.uppVoltMax))
-        self.uppEnab.mark (self.go and self.torRound)
+        # self.uppEnab.mark (self.go and self.torRound)
+        self.uppEnab.mark (self.go)                             # simultan. @mje
         self.uppAngOld.set (self.uppAng)
         
         self.part ('fore arm')
