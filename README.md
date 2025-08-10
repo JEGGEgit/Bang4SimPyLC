@@ -40,7 +40,7 @@ https://github.com/JEGGEgit/Bang4SimPyLC/blob/main/demo/bang4simpylc1366x768.gif
 Notes
 -----
 
-The GUI operation as described (Mouse Wheel and PageUp/Dwn) didn't work for me. I'm running the simulation on Windows 10 64-bit (1511) with Python 3.10 32-bit.
+The GUI operation as described (Mouse Wheel) didn't work for me. I'm running the simulation on Windows 10 64-bit (1511) with Python 3.10 32-bit.
 
 And yes, in real life, I'm an old-school PLC programmer. I do simulations directly on the manufacturer's development environment, including Omron's Sysmac Studio.
 
